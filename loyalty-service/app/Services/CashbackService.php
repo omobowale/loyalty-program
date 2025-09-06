@@ -9,17 +9,15 @@ use Illuminate\Support\Facades\DB;
 
 class CashbackService
 {
-    /**
-     * Process cashback for a user purchase
-     */
+    protected int $cacheTtl = 3600; // 1 hour
+
     public function process(User $user, float $amount): array
     {
         try {
-            $cashbackAmount = $amount * 0.05; // 5% cashback
+            $cashbackAmount = $amount * 0.05; // 5%
 
             return DB::transaction(function () use ($user, $cashbackAmount) {
 
-                // Simulate provider response (mock or real API later)
                 $status = rand(0, 1) ? 'success' : 'failed';
                 $providerResponse = [
                     'mock' => true,
@@ -27,21 +25,17 @@ class CashbackService
                     'processed_at' => now(),
                 ];
 
-                // Save transaction
                 $transaction = $user->transactions()->create([
                     'amount' => $cashbackAmount,
                     'status' => $status,
                     'provider_response' => $providerResponse,
                 ]);
 
-                // Update cached cashback balance for dashboard (1 hour cache)
+                // Update cached balance if successful
                 if ($status === 'success') {
-                    $cacheKey = "user:{$user->id}:cashback_balance";
-                    $currentBalance = Cache::get($cacheKey, 0);
-                    Cache::put($cacheKey, $currentBalance + $cashbackAmount, 3600);
+                    $this->updateCache($user);
                 }
 
-                // Log the transaction
                 Log::info('Cashback processed', [
                     'user_id' => $user->id,
                     'cashback_amount' => $cashbackAmount,
@@ -60,16 +54,28 @@ class CashbackService
         }
     }
 
-    /**
-     * Retrieve cached cashback balance (fast)
-     */
     public function getCachedBalance(User $user): float
     {
-        return Cache::get("user:{$user->id}:cashback_balance", function () use ($user) {
-            // If not cached, calculate and cache
-            $total = $user->transactions()->where('status', 'success')->sum('amount');
-            Cache::put("user:{$user->id}:cashback_balance", $total, 3600);
-            return $total;
-        });
+        $cacheKey = $this->cacheKey($user);
+
+        $balance = Cache::get($cacheKey);
+
+        if ($balance === null) {
+            $balance = $user->transactions()->where('status', 'success')->sum('amount');
+            Cache::put($cacheKey, $balance, $this->cacheTtl);
+        }
+
+        return (float) $balance;
+    }
+
+    protected function updateCache(User $user): void
+    {
+        $balance = $user->transactions()->where('status', 'success')->sum('amount');
+        Cache::put($this->cacheKey($user), $balance, $this->cacheTtl);
+    }
+
+    protected function cacheKey(User $user): string
+    {
+        return "user:{$user->id}:cashback_balance";
     }
 }
