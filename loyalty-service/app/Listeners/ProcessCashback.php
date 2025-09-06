@@ -9,12 +9,11 @@ use Illuminate\Queue\InteractsWithQueue;
 
 class ProcessCashback
 {
-    /**
-     * Create the event listener.
-     */
-    public function __construct()
+    protected CashbackService $cashbackService;
+
+    public function __construct(CashbackService $cashbackService)
     {
-        //
+        $this->cashbackService = $cashbackService;
     }
 
     /**
@@ -22,7 +21,6 @@ class ProcessCashback
      */
     public function handle(PurchaseMade $event)
     {
-        $service = new CashbackService();
-        $service->process($event->user, $event->amount);
+        $this->cashbackService->process($event->user, $event->amount);
     }
 }
