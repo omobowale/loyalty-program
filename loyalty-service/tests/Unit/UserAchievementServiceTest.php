@@ -57,4 +57,71 @@ class UserAchievementServiceTest extends TestCase
             $this->assertTrue($a['unlocked']);
         }
     }
+
+    public function test_user_with_no_achievements_returns_empty_array()
+    {
+        $user = User::factory()->create();
+        $service = new UserAchievementService();
+
+        $result = $service->getUserAchievements($user);
+        $this->assertEmpty($result['achievements']);
+        $this->assertNull($result['current_badge']);
+        $this->assertEquals(0, $result['cashback_balance']);
+    }
+
+    public function test_user_with_multiple_badges_returns_latest_badge()
+    {
+        $user = User::factory()->create();
+
+        $badge1 = Badge::factory()->create(['name' => 'Bronze']);
+        $badge2 = Badge::factory()->create(['name' => 'Silver']);
+        $user->badges()->attach($badge1->id, ['unlocked_at' => now()->subDay()]);
+        $user->badges()->attach($badge2->id, ['unlocked_at' => now()]);
+
+        $service = new UserAchievementService();
+        $result = $service->getUserAchievements($user);
+
+        $this->assertEquals('Silver', $result['current_badge']);
+    }
+
+    public function test_achievements_without_unlocked_at_still_returns_unlocked_flag()
+    {
+        $user = User::factory()->create();
+        $achievement = Achievement::factory()->create(['name' => 'Test Achievement']);
+        $user->achievements()->attach($achievement->id, ['unlocked_at' => null]);
+
+        $service = new UserAchievementService();
+        $result = $service->getUserAchievements($user);
+
+        $this->assertCount(1, $result['achievements']);
+        $this->assertArrayHasKey('unlocked', $result['achievements'][0]);
+        $this->assertTrue($result['achievements'][0]['unlocked']); // your service currently returns true always
+    }
+
+    public function test_cashback_balance_sums_only_successful_transactions()
+    {
+        $user = User::factory()->create();
+        Transaction::factory()->create(['user_id' => $user->id, 'amount' => 100, 'status' => 'success']);
+        Transaction::factory()->create(['user_id' => $user->id, 'amount' => 50, 'status' => 'failed']);
+
+        $service = new UserAchievementService();
+        $result = $service->getUserAchievements($user);
+
+        $this->assertEquals(100, $result['cashback_balance']);
+    }
+
+    public function test_large_number_of_achievements()
+    {
+        $user = User::factory()->create();
+        $achievements = Achievement::factory()->count(50)->create();
+
+        foreach ($achievements as $a) {
+            $user->achievements()->attach($a->id, ['unlocked_at' => now()]);
+        }
+
+        $service = new UserAchievementService();
+        $result = $service->getUserAchievements($user);
+
+        $this->assertCount(50, $result['achievements']);
+    }
 }
