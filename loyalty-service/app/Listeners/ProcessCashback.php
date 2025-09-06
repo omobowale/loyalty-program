@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\PurchaseMade;
+use App\Services\CashbackService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 
@@ -21,14 +22,7 @@ class ProcessCashback
      */
     public function handle(PurchaseMade $event)
     {
-        $user = $event->user;
-        $amount = $event->amount * 0.05; // 5% cashback
-
-        $status = rand(0, 1) ? 'success' : 'failed';
-        $transaction = $user->transactions()->create([
-            'amount' => $amount,
-            'status' => $status,
-            'provider_response' => ['mock' => true, 'status' => $status]
-        ]);
+        $service = new CashbackService();
+        $service->process($event->user, $event->amount);
     }
 }

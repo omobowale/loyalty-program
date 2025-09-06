@@ -8,8 +8,12 @@ use App\Models\Badge;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 
-class UnlockBadges
+class UnlockBadges implements ShouldQueue
 {
+
+    public $timeout = 60; // max execution time
+    public $tries = 3;    // retry attempts
+    
     /**
      * Create the event listener.
      */
