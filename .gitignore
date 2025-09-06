@@ -1,0 +1,8 @@
+# Laravel
+loyalty-service/vendor
+loyalty-service/node_modules
+loyalty-service/.env
+
+# React
+loyalty-app/node_modules
+loyalty-app/build
