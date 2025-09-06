@@ -13,42 +13,42 @@ use Illuminate\Support\Facades\Cache;
 
 class UnlockBadges implements ShouldQueue
 {
-
     use InteractsWithQueue;
 
     public $timeout = 60; // max execution time
     public $tries = 3;    // retry attempts
 
-    /**
-     * Create the event listener.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Handle the event.
-     */
     public function handle(PurchaseMade $event)
     {
         $user = $event->user;
 
         // Cache all achievements for 1 hour
-        $allAchievements = Cache::remember('achievements_all', 3600, function () {
-            return Achievement::all();
-        });
+        $allAchievements = Cache::remember('achievements_all', 3600, fn() => Achievement::all());
 
-        // Filter achievements that user hasn't unlocked AND meets points requirement
-        $achievementsToUnlock = $allAchievements->filter(function ($achievement) use ($user, $event) {
-            $alreadyUnlocked = $user->achievements->contains($achievement->id);
-            $meetsRequirement = $event->amount >= $achievement->points_required;
-            return !$alreadyUnlocked && $meetsRequirement;
-        });
+        // Unlock achievements first
+        $achievementsToUnlock = $allAchievements->filter(fn($achievement) =>
+            !$user->achievements->contains($achievement->id) &&
+            $event->amount >= $achievement->points_required
+        );
 
         foreach ($achievementsToUnlock as $achievement) {
             $user->achievements()->attach($achievement->id, ['unlocked_at' => now()]);
             event(new AchievementUnlocked($user, $achievement));
+        }
+
+        // Cache all badges for 1 hour
+        $allBadges = Cache::remember('badges_all', 3600, fn() => Badge::all());
+
+        // Unlock badges based on user's achievement count
+        $unlockedCount = $user->achievements()->count();
+
+        foreach ($allBadges as $badge) {
+            $alreadyUnlocked = $user->badges->contains($badge->id);
+
+            if (!$alreadyUnlocked && $unlockedCount >= $badge->min_achievements) {
+                $user->badges()->attach($badge->id, ['unlocked_at' => now()]);
+                event(new BadgeUnlocked($user, $badge));
+            }
         }
     }
 }
