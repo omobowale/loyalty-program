@@ -24,19 +24,12 @@ class UnlockBadgesTest extends TestCase
 
         $user = User::factory()->create();
 
-        // Achievements for user
         $achievement1 = Achievement::factory()->create(['points_required' => 100]);
         $achievement2 = Achievement::factory()->create(['points_required' => 200]);
+        $user->achievements()->attach([$achievement1->id, $achievement2->id], ['unlocked_at' => now()]);
 
-        $user->achievements()->attach([
-            $achievement1->id => ['unlocked_at' => now()],
-            $achievement2->id => ['unlocked_at' => now()],
-        ]);
-
-        // Badge that requires 2 achievements
         $badge = Badge::factory()->create(['name' => 'Bronze', 'min_achievements' => 2]);
 
-        // Mock caches
         Cache::shouldReceive('remember')
             ->once()
             ->with('achievements_all', 3600, \Closure::class)
@@ -51,13 +44,11 @@ class UnlockBadgesTest extends TestCase
         $event = new PurchaseMade($user, 300);
         $listener->handle($event);
 
-        // Assert badge unlocked in DB
         $this->assertDatabaseHas('user_badges', [
             'user_id' => $user->id,
             'badge_id' => $badge->id,
         ]);
 
-        // Assert event dispatched
         Event::assertDispatched(BadgeUnlocked::class, function ($e) use ($user, $badge) {
             return $e->user->id === $user->id && $e->badge->id === $badge->id;
         });
@@ -70,8 +61,6 @@ class UnlockBadgesTest extends TestCase
 
         $user = User::factory()->create();
         $badge = Badge::factory()->create(['min_achievements' => 1]);
-
-        // Already unlocked
         $user->badges()->attach($badge->id, ['unlocked_at' => now()]);
 
         Cache::shouldReceive('remember')
@@ -98,14 +87,9 @@ class UnlockBadgesTest extends TestCase
         Cache::flush();
 
         $user = User::factory()->create();
-
         $achievement1 = Achievement::factory()->create(['points_required' => 100]);
         $achievement2 = Achievement::factory()->create(['points_required' => 200]);
-
-        $user->achievements()->attach([
-            $achievement1->id => ['unlocked_at' => now()],
-            $achievement2->id => ['unlocked_at' => now()],
-        ]);
+        $user->achievements()->attach([$achievement1->id, $achievement2->id], ['unlocked_at' => now()]);
 
         $badge1 = Badge::factory()->create(['min_achievements' => 1]);
         $badge2 = Badge::factory()->create(['min_achievements' => 2]);
@@ -128,12 +112,90 @@ class UnlockBadgesTest extends TestCase
             'user_id' => $user->id,
             'badge_id' => $badge1->id,
         ]);
-
         $this->assertDatabaseHas('user_badges', [
             'user_id' => $user->id,
             'badge_id' => $badge2->id,
         ]);
 
         Event::assertDispatched(BadgeUnlocked::class, 2);
+    }
+
+    // ---------- Edge Case Tests ----------
+
+    public function test_no_badge_unlocked_if_user_has_insufficient_achievements()
+    {
+        Event::fake();
+        Cache::flush();
+
+        $user = User::factory()->create();
+        $achievement = Achievement::factory()->create(['points_required' => 100]);
+        $user->achievements()->attach($achievement->id, ['unlocked_at' => now()]);
+
+        $badge = Badge::factory()->create(['min_achievements' => 2]);
+
+        Cache::shouldReceive('remember')
+            ->with('achievements_all', 3600, \Closure::class)
+            ->andReturn(collect([$achievement]));
+
+        Cache::shouldReceive('remember')
+            ->with('badges_all', 3600, \Closure::class)
+            ->andReturn(collect([$badge])); // <-- make sure this returns Badge
+
+        $listener = new UnlockBadges();
+        $event = new PurchaseMade($user, 150);
+        $listener->handle($event);
+
+        $this->assertDatabaseMissing('user_badges', [
+            'user_id' => $user->id,
+            'badge_id' => $badge->id,
+        ]);
+
+        Event::assertNotDispatched(BadgeUnlocked::class);
+    }
+
+
+    public function test_no_badge_unlocked_if_user_already_has_all_badges()
+    {
+        Event::fake();
+        Cache::flush();
+
+        $user = User::factory()->create();
+        $achievement = Achievement::factory()->create(['points_required' => 100]);
+        $user->achievements()->attach($achievement->id, ['unlocked_at' => now()]);
+
+        $badge = Badge::factory()->create(['min_achievements' => 1]);
+        $user->badges()->attach($badge->id, ['unlocked_at' => now()]);
+
+        Cache::shouldReceive('remember')->andReturn(collect([$achievement]));
+        Cache::shouldReceive('remember')->andReturn(collect([$badge]));
+
+        $listener = new UnlockBadges();
+        $event = new PurchaseMade($user, 150);
+        $listener->handle($event);
+
+        $this->assertCount(1, $user->badges);
+        Event::assertNotDispatched(BadgeUnlocked::class);
+    }
+
+    public function test_no_badges_unlocked_if_no_achievements_exist()
+    {
+        Event::fake();
+        Cache::flush();
+
+        $user = User::factory()->create();
+        $badge = Badge::factory()->create(['min_achievements' => 1]);
+
+        Cache::shouldReceive('remember')->andReturn(collect()); // No achievements
+        Cache::shouldReceive('remember')->andReturn(collect([$badge]));
+
+        $listener = new UnlockBadges();
+        $event = new PurchaseMade($user, 500);
+        $listener->handle($event);
+
+        $this->assertDatabaseMissing('user_badges', [
+            'user_id' => $user->id,
+            'badge_id' => $badge->id,
+        ]);
+        Event::assertNotDispatched(BadgeUnlocked::class);
     }
 }
