@@ -19,6 +19,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->app['router']->aliasMiddleware('mockAuth', \App\Http\Middleware\MockAuth::class);
     }
 }

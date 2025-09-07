@@ -11,6 +11,8 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
+
 
 class PurchaseMade implements ShouldQueue
 {
@@ -18,7 +20,7 @@ class PurchaseMade implements ShouldQueue
 
     public $user;
     public $amount;
-
+    public $uuid;
 
     /**
      * Create a new event instance.
@@ -27,5 +29,15 @@ class PurchaseMade implements ShouldQueue
     {
         $this->user = $user;
         $this->amount = $amount;
+        $this->uuid = (string) Str::uuid(); // unique event ID
+
+        // 👇 Add this log
+        logger()->info('🔥 PurchaseMade DISPATCHED', [
+            'uuid'   => $this->uuid,
+            'user_id' => $user->id,
+            'amount' => $amount,
+            'trace'  => collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10))
+                ->pluck('function'),
+        ]);
     }
 }

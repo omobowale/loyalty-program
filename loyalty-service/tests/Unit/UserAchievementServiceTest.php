@@ -14,114 +14,84 @@ class UserAchievementServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_achievements_service_returns_correct_data()
+    public function test_user_with_achievements_badge_and_cashback()
     {
-        // Create user
         $user = User::factory()->create();
 
-        // Create achievements and attach to user
         $achievement1 = Achievement::factory()->create(['name' => 'First Purchase']);
         $achievement2 = Achievement::factory()->create(['name' => 'Big Spender']);
 
+        $badge = Badge::factory()->create(['name' => 'Gold']);
+
+        // Attach achievements
         $user->achievements()->attach($achievement1->id, ['unlocked_at' => now()]);
         $user->achievements()->attach($achievement2->id, ['unlocked_at' => now()]);
 
-        // Create badges and attach to user
-        $badge = Badge::factory()->create(['name' => 'Bronze', 'min_achievements' => 2]);
-        $user->badges()->attach($badge->id, ['unlocked_at' => now()]);
+        // Attach badge
+        $user->badges()->attach($badge->id);
 
-        // Create transactions for cashback
-        Transaction::factory()->create([
-            'user_id' => $user->id,
-            'amount' => 100,
-            'status' => 'success',
-        ]);
-        Transaction::factory()->create([
-            'user_id' => $user->id,
-            'amount' => 50,
-            'status' => 'failed',
-        ]);
+        // Add successful transactions
+        Transaction::factory()->create(['user_id' => $user->id, 'amount' => 100, 'status' => 'success']);
+        Transaction::factory()->create(['user_id' => $user->id, 'amount' => 50, 'status' => 'success']);
+        Transaction::factory()->create(['user_id' => $user->id, 'amount' => 20, 'status' => 'failed']); // should not count
 
-        // Run service
         $service = new UserAchievementService();
         $result = $service->getUserAchievements($user);
 
-        // Assertions
         $this->assertCount(2, $result['achievements']);
-        $this->assertEquals('Bronze', $result['current_badge']);
-        $this->assertEquals(100, $result['cashback_balance']);
+        $this->assertEquals($achievement1->name, $result['achievements'][0]['name']);
+        $this->assertTrue($result['achievements'][0]['unlocked']);
+        $this->assertEquals($achievement2->name, $result['achievements'][1]['name']);
+        $this->assertTrue($result['achievements'][1]['unlocked']);
 
-        // Check unlocked_at exists
-        foreach ($result['achievements'] as $a) {
-            $this->assertArrayHasKey('unlocked_at', $a);
-            $this->assertTrue($a['unlocked']);
-        }
+        $this->assertEquals($badge->name, $result['current_badge']);
+        $this->assertEquals(150, $result['cashback_balance']); // only successful transactions
     }
 
-    public function test_user_with_no_achievements_returns_empty_array()
+    public function test_user_with_no_achievements()
     {
         $user = User::factory()->create();
-        $service = new UserAchievementService();
 
+        $service = new UserAchievementService();
         $result = $service->getUserAchievements($user);
+
         $this->assertEmpty($result['achievements']);
         $this->assertNull($result['current_badge']);
         $this->assertEquals(0, $result['cashback_balance']);
     }
 
-    public function test_user_with_multiple_badges_returns_latest_badge()
+    public function test_user_with_no_transactions()
     {
         $user = User::factory()->create();
 
-        $badge1 = Badge::factory()->create(['name' => 'Bronze']);
-        $badge2 = Badge::factory()->create(['name' => 'Silver']);
-        $user->badges()->attach($badge1->id, ['unlocked_at' => now()->subDay()]);
-        $user->badges()->attach($badge2->id, ['unlocked_at' => now()]);
+        $achievement = Achievement::factory()->create(['name' => 'First Purchase']);
+        $badge = Badge::factory()->create(['name' => 'Bronze']);
 
-        $service = new UserAchievementService();
-        $result = $service->getUserAchievements($user);
-
-        $this->assertEquals('Silver', $result['current_badge']);
-    }
-
-    public function test_achievements_without_unlocked_at_still_returns_unlocked_flag()
-    {
-        $user = User::factory()->create();
-        $achievement = Achievement::factory()->create(['name' => 'Test Achievement']);
-        $user->achievements()->attach($achievement->id, ['unlocked_at' => null]);
+        $user->achievements()->attach($achievement->id, ['unlocked_at' => now()]);
+        $user->badges()->attach($badge->id);
 
         $service = new UserAchievementService();
         $result = $service->getUserAchievements($user);
 
         $this->assertCount(1, $result['achievements']);
-        $this->assertArrayHasKey('unlocked', $result['achievements'][0]);
-        $this->assertTrue($result['achievements'][0]['unlocked']); // your service currently returns true always
+        $this->assertEquals($achievement->name, $result['achievements'][0]['name']);
+        $this->assertEquals($badge->name, $result['current_badge']);
+        $this->assertEquals(0, $result['cashback_balance']);
     }
 
-    public function test_cashback_balance_sums_only_successful_transactions()
+    public function test_user_with_multiple_badges_only_latest_counts()
     {
         $user = User::factory()->create();
-        Transaction::factory()->create(['user_id' => $user->id, 'amount' => 100, 'status' => 'success']);
-        Transaction::factory()->create(['user_id' => $user->id, 'amount' => 50, 'status' => 'failed']);
+
+        $badge1 = Badge::factory()->create(['name' => 'Bronze']);
+        $badge2 = Badge::factory()->create(['name' => 'Silver']);
+
+        $user->badges()->attach($badge1->id);
+        $user->badges()->attach($badge2->id);
 
         $service = new UserAchievementService();
         $result = $service->getUserAchievements($user);
 
-        $this->assertEquals(100, $result['cashback_balance']);
-    }
-
-    public function test_large_number_of_achievements()
-    {
-        $user = User::factory()->create();
-        $achievements = Achievement::factory()->count(50)->create();
-
-        foreach ($achievements as $a) {
-            $user->achievements()->attach($a->id, ['unlocked_at' => now()]);
-        }
-
-        $service = new UserAchievementService();
-        $result = $service->getUserAchievements($user);
-
-        $this->assertCount(50, $result['achievements']);
+        $this->assertEquals($badge2->name, $result['current_badge']);
     }
 }

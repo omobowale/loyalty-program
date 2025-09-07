@@ -5,7 +5,7 @@ namespace App\Listeners;
 use App\Events\PurchaseMade;
 use App\Services\CashbackService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Log;
 
 class ProcessCashback
 {
@@ -19,8 +19,23 @@ class ProcessCashback
     /**
      * Handle the event.
      */
-    public function handle(PurchaseMade $event)
+    public function handle(PurchaseMade $event): void
     {
-        $this->cashbackService->process($event->user, $event->amount);
+
+        logger()->info('💰 ProcessCashback START', [
+            'uuid' => $event->uuid,
+            'user_id' => $event->user->id,
+            'amount' => $event->amount,
+            'trace' => collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10))
+                ->pluck('function'),
+        ]);
+
+        $result = $this->cashbackService->process($event->user, $event->amount);
+
+        Log::info('💰 Cashback event handled', [
+            'user_id' => $event->user->id,
+            'purchase_amount' => $event->amount,
+            'cashback_status' => $result['status'],
+        ]);
     }
 }

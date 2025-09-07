@@ -9,22 +9,47 @@ use Illuminate\Support\Facades\DB;
 
 class CashbackService
 {
+    protected float $rate;
     protected int $cacheTtl = 3600; // 1 hour
 
-    public function process(User $user, float $amount): array
+    public function __construct()
+    {
+        // Use the configured cashback rate, default to 5%
+        $this->rate = config('loyalty.cashback_rate', 0.05);
+    }
+
+    /**
+     * Process cashback for a user
+     *
+     * @param User $user
+     * @param float $amount
+     * @param bool|null $forceSuccess Force success/failure for tests
+     * @param bool $forceCache Update cache immediately (useful for tests)
+     * @return array ['status' => 'success'|'failed', 'transaction' => Transaction|null]
+     */
+    public function process(User $user, float $amount, ?bool $forceSuccess = null, bool $forceCache = false): array
     {
         try {
-            $cashbackAmount = $amount * 0.05; // 5%
+            $cashbackAmount = $amount * $this->rate;
 
-            return DB::transaction(function () use ($user, $cashbackAmount) {
+            return DB::transaction(function () use ($user, $cashbackAmount, $forceSuccess, $forceCache) {
 
-                $status = rand(0, 1) ? 'success' : 'failed';
+                // Ensure status is always a string 'success' or 'failed'
+                if ($forceSuccess === true) {
+                    $status = 'success';
+                } elseif ($forceSuccess === false) {
+                    $status = 'failed';
+                } else {
+                    $status = rand(0, 1) ? 'success' : 'failed';
+                }
+
                 $providerResponse = [
                     'mock' => true,
                     'status' => $status,
                     'processed_at' => now(),
                 ];
 
+                // Create transaction
                 $transaction = $user->transactions()->create([
                     'amount' => $cashbackAmount,
                     'status' => $status,
@@ -33,7 +58,13 @@ class CashbackService
 
                 // Update cached balance if successful
                 if ($status === 'success') {
-                    $this->updateCache($user);
+                    if ($forceCache) {
+                        $this->updateCache($user); // update immediately for tests
+                    } else {
+                        DB::afterCommit(function () use ($user) {
+                            $this->updateCache($user);
+                        });
+                    }
                 }
 
                 Log::info('Cashback processed', [
@@ -54,6 +85,9 @@ class CashbackService
         }
     }
 
+    /**
+     * Get cached cashback balance
+     */
     public function getCachedBalance(User $user): float
     {
         $cacheKey = $this->cacheKey($user);
@@ -68,12 +102,18 @@ class CashbackService
         return (float) $balance;
     }
 
+    /**
+     * Force update cache from database
+     */
     protected function updateCache(User $user): void
     {
         $balance = $user->transactions()->where('status', 'success')->sum('amount');
         Cache::put($this->cacheKey($user), $balance, $this->cacheTtl);
     }
 
+    /**
+     * Cache key for user
+     */
     protected function cacheKey(User $user): string
     {
         return "user:{$user->id}:cashback_balance";
