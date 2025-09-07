@@ -3,15 +3,18 @@ import { useMockAuth } from "../../context/MockAuthContext"
 
 export default function LoginPage({ onLogin }) {
     const [password, setPassword] = useState("")
-    const { user, setUser } = useMockAuth()
+    const { setUser } = useMockAuth()
+    const [error, setError] = useState("")
 
     const handleLogin = () => {
         if (password === "admin123") {
             // Mock authentication
+            const mockAdmin = { id: 1, isAdmin: true }
+            setUser(mockAdmin)
             onLogin(true)
-            setUser({ id: 1, isAdmin: true })
+            setError("")
         } else {
-            alert("Wrong password")
+            setError("Incorrect password")
         }
     }
 
@@ -25,6 +28,11 @@ export default function LoginPage({ onLogin }) {
                     placeholder="Enter password"
                     className="px-4 py-2 border border-gray-200 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
+                {error && (
+                    <div role="alert" className="text-red-600 font-medium">
+                        {error}
+                    </div>
+                )}
                 <button
                     onClick={handleLogin}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition duration-200"

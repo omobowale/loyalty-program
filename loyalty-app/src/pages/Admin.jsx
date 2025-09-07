@@ -1,14 +1,12 @@
-import { useState } from "react"
-import LoginPage from "../components/admin_panel/LoginPage"
-import { useAdminUsersAchievements } from "../hooks/useAdminUsersAchievements"
-import UsersTable from "../components/admin_panel/UsersTable"
+import LoginPage from "../components/admin_panel/LoginPage";
+import UsersTable from "../components/admin_panel/UsersTable";
+import { useAdminDashboard } from "../hooks/useAdminDashboard";
 
 export default function Admin() {
-  const [loggedIn, setLoggedIn] = useState(false)
-  const { users, isLoading, isError } = useAdminUsersAchievements(loggedIn)
+  const { loggedIn, setLoggedIn, users, isLoading, isError } = useAdminDashboard();
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-6xl mx-auto">
         {!loggedIn ? (
           <div className="flex items-center justify-center h-[60vh]">
@@ -28,15 +26,28 @@ export default function Admin() {
             {isLoading && (
               <div className="text-center text-gray-600">Loading users...</div>
             )}
+
             {isError && (
-              <div className="text-center text-red-600">
+              <div
+                role="alert"
+                className="text-center text-red-600 font-medium mb-4"
+              >
                 Failed to fetch user data.
               </div>
             )}
-            {!isLoading && !isError && <UsersTable users={users} />}
+
+            {!isLoading && !isError && users.length === 0 && (
+              <div className="text-center text-gray-600">
+                No users found.
+              </div>
+            )}
+
+            {!isLoading && !isError && users.length > 0 && (
+              <UsersTable users={users} />
+            )}
           </>
         )}
       </div>
     </div>
-  )
+  );
 }

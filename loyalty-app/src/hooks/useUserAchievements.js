@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAchievementsApi } from "./useApi";
+import { useAchievementsApi } from "./useAchievementsApi";
 
 export function useUserAchievements(userId) {
     const { getUserAchievements } = useAchievementsApi()
