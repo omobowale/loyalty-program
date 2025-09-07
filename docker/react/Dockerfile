@@ -3,11 +3,11 @@ FROM node:20
 WORKDIR /app
 
 # Copy package.json and install dependencies
-COPY ./react/package*.json ./
+COPY ./loyalty-app/package*.json ./
 RUN npm install
 
 # Copy React project
-COPY ./react ./
+COPY ./loyalty-app ./
 
 # Build React app
 RUN npm run build
