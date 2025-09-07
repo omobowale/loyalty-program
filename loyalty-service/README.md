@@ -1,6 +1,45 @@
+# Loyalty Program Backend (Laravel)
+
+## 📌 Overview
+This is the backend service for the Loyalty Program application.  
+It is built with **Laravel** and provides APIs for:
+- Customer purchases
+- Achievements and badges
+- Cashback system
+- Admin dashboard data
+
+## 🏗 Design Choices
+- **Service-based architecture**: Business logic (e.g., cashback) lives in service classes instead of controllers.
+- **Events & Listeners**: Purchases trigger `PurchaseMade` events which unlock achievements/badges asynchronously.
+- **Queues**: Long-running tasks are queued to ensure scalability.
+- **E2E & Feature Tests**: Achievements, badges, and purchase workflows are tested with PHPUnit.
+
+## ⚙️ Setup
+1. Clone the mono repository:
+   ```bash
+   git clone https://github.com/omobowale/loyalty-program.git
+   cd loyalty-program
+   ```
+
+2. Build and run:
+   ```bash
+   docker compose up --build
+    ```
+
+3. Interact with the shell using:
+    ```bash
+    docker compose exec laravel bash
+    ```
+You can run your artisan commands right in there.
+
 
 
 ## End-to-End Test: Purchase → Achievement → Badge Flow
+
+There are several tests in the application. To run please type:
+```bash
+    php artisan test
+```
 
 ### Test File
 A. `tests/Feature/PurchaseFlowE2ETest.php`
