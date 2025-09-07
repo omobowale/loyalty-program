@@ -2,13 +2,13 @@ import { useState } from "react"
 import { useLogin } from "../../hooks/useLogin"
 import { useMockAuth } from "../../context/MockAuthContext";
 
-export default function LoginPage() {
+export default function UserLoginPage() {
     const [password, setPassword] = useState("")
 
     const { login, error, loggedIn } = useMockAuth();
 
     const handleLogin = () => {
-        login({ password, userType: "admin" })
+        login({ password, userType: "user" })
     }
 
     return (

@@ -1,37 +1,20 @@
-import { useState, useEffect } from "react";
-import { useAdminUsersAchievements } from "../hooks/useAdminUsersAchievements";
+// src/hooks/useAdminDashboard.js
 import { useMockAuth } from "../context/MockAuthContext";
+import { useAdminUsersAchievements } from "../hooks/useAdminUsersAchievements";
 
 export function useAdminDashboard() {
-    const { user } = useMockAuth();
+    const { user, loggedIn } = useMockAuth();
 
-    const [loggedIn, setLoggedIn] = useState(() => {
-        return localStorage.getItem("adminLoggedIn") === "true";
-    });
+    // Only fetch if logged in and admin
+    const shouldFetch = loggedIn && user?.isAdmin;
 
-    const { users: usersData, isLoading, isError } = useAdminUsersAchievements(loggedIn);
-
-    // Extract users safely (handle data inside .data)
-    const users = usersData?.data || [];
-
-    // Sync login state to localStorage
-    useEffect(() => {
-        localStorage.setItem("adminLoggedIn", loggedIn);
-    }, [loggedIn]);
-
-    // Force logout if user is not admin
-    useEffect(() => {
-        if (user && !user.isAdmin) {
-            setLoggedIn(false);
-        }
-    }, [user]);
+    const { users: usersData, isLoading, isError } = useAdminUsersAchievements(shouldFetch);
 
     return {
         user,
         loggedIn,
-        setLoggedIn,
-        users,
-        isLoading,
-        isError,
+        users: shouldFetch ? usersData?.data || [] : [],
+        isLoading: shouldFetch ? isLoading : false,
+        isError: shouldFetch ? isError : false,
     };
 }

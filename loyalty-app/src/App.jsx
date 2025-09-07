@@ -4,6 +4,7 @@ import Customer from "./pages/Customer";
 import Admin from "./pages/Admin";
 import "./App.css";
 import Layout from "./components/commons/Layout";
+import LoginPage from "./components/admin_panel/LoginPage";
 
 function App() {
   const queryClient = new QueryClient();
@@ -15,6 +16,7 @@ function App() {
           {/* Layout wrapper */}
           <Route element={<Layout />}>
             <Route path="/" element={<Customer />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route path="/customer" element={<Customer />} />
             <Route path="/admin" element={<Admin />} />
           </Route>
