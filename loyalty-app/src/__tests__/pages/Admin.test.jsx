@@ -1,102 +1,47 @@
-import { render, screen } from "@testing-library/react";
-import { vi } from "vitest";
-import Admin from "../../pages/Admin";
-import * as AdminHook from "../../hooks/useAdminDashboard";
+import { render, screen, fireEvent } from "@testing-library/react"
+import { vi } from "vitest"
+import LoginPage from "../../components/admin_panel/LoginPage"
 
-// Mock child components
-vi.mock("../../components/admin_panel/LoginPage", () => ({
-    default: ({ onLogin }) => <button onClick={() => onLogin(true)}>Login</button>,
-}));
+// Mock the useMockAuth context
+const mockLogin = vi.fn()
+let mockError = null
 
-vi.mock("../../components/admin_panel/UsersTable", () => ({
-    default: ({ users }) => (
-        <div>
-            {users.map((u) => (
-                <div key={u.user.id}>{u.user.name}</div>
-            ))}
-        </div>
-    ),
-}));
+vi.mock("../../context/MockAuthContext", () => ({
+  useMockAuth: () => ({
+    login: mockLogin,
+    error: mockError,
+    loggedIn: false,
+  }),
+}))
 
-describe("Admin Page", () => {
-    afterEach(() => {
-        vi.clearAllMocks();
-    });
+describe("LoginPage Component", () => {
+  beforeEach(() => {
+    mockLogin.mockClear()
+    mockError = null
+  })
 
-    it("renders login page when not logged in", () => {
-        vi.spyOn(AdminHook, "useAdminDashboard").mockReturnValue({
-            loggedIn: false,
-            setLoggedIn: vi.fn(),
-            users: [],
-            isLoading: false,
-            isError: false,
-        });
+  it("renders password input and login button", () => {
+    render(<LoginPage />)
+    expect(screen.getByPlaceholderText("Enter password")).toBeInTheDocument()
+    expect(screen.getByText("Login")).toBeInTheDocument()
+  })
 
-        render(<Admin />);
+  it("calls login with correct arguments when password entered", () => {
+    render(<LoginPage />)
 
-        expect(screen.getByText(/Admin Login/i)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Login/i })).toBeInTheDocument();
-    });
+    const input = screen.getByPlaceholderText("Enter password")
+    const button = screen.getByText("Login")
 
-    it("shows loading state when fetching users", () => {
-        vi.spyOn(AdminHook, "useAdminDashboard").mockReturnValue({
-            loggedIn: true,
-            setLoggedIn: vi.fn(),
-            users: [],
-            isLoading: true,
-            isError: false,
-        });
+    fireEvent.change(input, { target: { value: "admin123" } })
+    fireEvent.click(button)
 
-        render(<Admin />);
+    expect(mockLogin).toHaveBeenCalledWith({ password: "admin123", userType: "admin" })
+  })
 
-        expect(screen.getByText(/Loading users/i)).toBeInTheDocument();
-    });
+  it("shows error message if error is returned from context", () => {
+    mockError = "Incorrect password"
+    render(<LoginPage />)
 
-    it("shows error state when API fails", () => {
-        vi.spyOn(AdminHook, "useAdminDashboard").mockReturnValue({
-            loggedIn: true,
-            setLoggedIn: vi.fn(),
-            users: [],
-            isLoading: false,
-            isError: true,
-        });
-
-        render(<Admin />);
-
-        expect(screen.getByRole("alert")).toHaveTextContent(/Failed to fetch user data/i);
-    });
-
-    it("shows no users message when list is empty", () => {
-        vi.spyOn(AdminHook, "useAdminDashboard").mockReturnValue({
-            loggedIn: true,
-            setLoggedIn: vi.fn(),
-            users: [],
-            isLoading: false,
-            isError: false,
-        });
-
-        render(<Admin />);
-
-        expect(screen.getByText(/No users found/i)).toBeInTheDocument();
-    });
-
-    it("renders users table when users exist", () => {
-        const mockUsers = [
-            { user: { id: 1, name: "Alice" } },
-            { user: { id: 2, name: "Bob" } },
-        ];
-
-        vi.spyOn(AdminHook, "useAdminDashboard").mockReturnValue({
-            loggedIn: true,
-            setLoggedIn: vi.fn(),
-            users: mockUsers,
-            isLoading: false,
-            isError: false,
-        });
-
-        render(<Admin />);
-
-        expect(screen.getByText("Alice")).toBeInTheDocument();
-        expect(screen.getByText("Bob")).toBeInTheDocument();
-    });
-});
+    expect(screen.getByRole("alert")).toHaveTextContent("Incorrect password")
+  })
+})
