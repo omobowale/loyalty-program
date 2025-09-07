@@ -1,3 +1,5 @@
+# Use build argument to choose dev or prod
+ARG NODE_ENV=development
 FROM node:20
 
 WORKDIR /app
@@ -6,14 +8,18 @@ WORKDIR /app
 COPY ./loyalty-app/package*.json ./
 RUN npm install
 
-# Copy React project
+# Copy the React app
 COPY ./loyalty-app ./
 
-# Build React app
-RUN npm run build
+# Expose ports
+# Dev: 5173, Prod: 3000
+EXPOSE 5173 3000
 
-# Expose port
-EXPOSE 3000
+# Build for production if NODE_ENV=production
+RUN if [ "$NODE_ENV" = "production" ]; then npm run build; fi
 
-# Start React backend
-CMD ["npm", "start"]
+# Start command
+CMD if [ "$NODE_ENV" = "production" ]; \
+    then npx serve -s dist -l 3000; \
+    else npm run dev -- --host 0.0.0.0; \
+    fi

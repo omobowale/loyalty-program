@@ -8,7 +8,6 @@ use App\Queue\FakeQueue;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
 class ConsumeFakeQueue extends Command
 {
