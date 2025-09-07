@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MockAuth
 {
@@ -13,18 +15,26 @@ class MockAuth
         $userId = $request->header('X-Mock-User') ?? $request->query('mock_user');
 
         if (!$userId) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
         }
-
-        $user = \App\Models\User::find($userId);
+        $user = User::find($userId);
 
         if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found.',
+            ], 404);
         }
 
-        // Optional role check
-        if ($role === 'admin' && !$user->is_admin) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+        // Role check
+        if ($role === 'admin' && $user->role !== "admin") {
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden.',
+            ], 403);
         }
 
         // Attach mock user to request

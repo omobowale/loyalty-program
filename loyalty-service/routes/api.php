@@ -10,7 +10,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-Route::get('/users/{user}/achievements', [UserController::class, 'achievements'])
+Route::get('/users/{userId}/achievements', [UserController::class, 'achievements'])
     ->middleware('mockAuth');
 
 Route::get('/admin/users/achievements', [AdminController::class, 'allAchievements'])

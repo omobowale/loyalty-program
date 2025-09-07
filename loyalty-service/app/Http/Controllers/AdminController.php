@@ -15,11 +15,12 @@ class AdminController extends BaseController
         $this->adminAchievementService = $adminAchievementService;
     }
 
-    public function allAchievements()
+    public function allAchievements(Request $request)
     {
-        return $this->safeCall(function () {
-            $data = $this->adminAchievementService->getAllUserAchievements();
-            return $this->successResponse($data, 'All user achievements retrieved successfully');
-        }, 'Failed to fetch all user achievements');
+        $admin = $request->get('mock_user'); // attached by middleware
+
+        $data = $this->adminAchievementService->getAllUserAchievements();
+
+        return $this->successResponse($data, 'All user achievements retrieved successfully');
     }
 }

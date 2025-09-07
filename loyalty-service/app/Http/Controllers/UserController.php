@@ -15,11 +15,20 @@ class UserController extends BaseController
         $this->userAchievementService = $userAchievementService;
     }
 
-    public function achievements(User $user)
+    public function achievements(Request $request, $userId)
     {
-        return $this->safeCall(function () use ($user) {
-            $data = $this->userAchievementService->getUserAchievements($user);
-            return $this->successResponse($data, 'User achievements retrieved successfully');
-        }, 'Failed to fetch user achievements');
+        $user = User::find($userId);
+        if (!$user) {
+            return $this->errorResponse('User not found', 404);
+        }
+
+        $data = $this->userAchievementService->getUserAchievements($user);
+
+        // Only sum successful transactions
+        $data['cashback_balance'] = $user->transactions()
+            ->where('status', 'success')
+            ->sum('amount');
+
+        return $this->successResponse($data, 'User achievements retrieved successfully');
     }
 }

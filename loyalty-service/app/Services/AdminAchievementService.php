@@ -11,7 +11,7 @@ class AdminAchievementService
      */
     public function getAllUserAchievements(): array
     {
-        $users = User::with(['achievements', 'badges'])->get();
+        $users = User::with(['achievements', 'badges'])->orderBy('id')->get();
 
         return $users->map(fn($u) => [
             'user' => [

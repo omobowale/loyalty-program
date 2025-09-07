@@ -29,12 +29,21 @@ class CashbackService
      */
     public function process(User $user, float $amount, ?bool $forceSuccess = null, bool $forceCache = false): array
     {
-        try {
-            $cashbackAmount = $amount * $this->rate;
+        // Reject negative amounts immediately
+        if ($amount < 0) {
+            Log::warning("Attempted cashback for negative amount", [
+                'user_id' => $user->id,
+                'amount' => $amount,
+            ]);
+            return ['status' => 'failed', 'transaction' => null];
+        }
 
+        $cashbackAmount = $amount * $this->rate;
+
+        try {
             return DB::transaction(function () use ($user, $cashbackAmount, $forceSuccess, $forceCache) {
 
-                // Ensure status is always a string 'success' or 'failed'
+                // Determine transaction status
                 if ($forceSuccess === true) {
                     $status = 'success';
                 } elseif ($forceSuccess === false) {
@@ -56,14 +65,12 @@ class CashbackService
                     'provider_response' => $providerResponse,
                 ]);
 
-                // Update cached balance if successful
+                // Update cache only if successful
                 if ($status === 'success') {
                     if ($forceCache) {
-                        $this->updateCache($user); // update immediately for tests
+                        $this->updateCache($user);
                     } else {
-                        DB::afterCommit(function () use ($user) {
-                            $this->updateCache($user);
-                        });
+                        DB::afterCommit(fn() => $this->updateCache($user));
                     }
                 }
 
@@ -85,13 +92,9 @@ class CashbackService
         }
     }
 
-    /**
-     * Get cached cashback balance
-     */
     public function getCachedBalance(User $user): float
     {
         $cacheKey = $this->cacheKey($user);
-
         $balance = Cache::get($cacheKey);
 
         if ($balance === null) {
@@ -102,18 +105,12 @@ class CashbackService
         return (float) $balance;
     }
 
-    /**
-     * Force update cache from database
-     */
     protected function updateCache(User $user): void
     {
         $balance = $user->transactions()->where('status', 'success')->sum('amount');
         Cache::put($this->cacheKey($user), $balance, $this->cacheTtl);
     }
 
-    /**
-     * Cache key for user
-     */
     protected function cacheKey(User $user): string
     {
         return "user:{$user->id}:cashback_balance";
