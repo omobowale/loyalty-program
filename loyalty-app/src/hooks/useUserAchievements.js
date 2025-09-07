@@ -1,51 +1,68 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getUserAchievements } from "../services/customers";
+import { useAchievementsApi } from "./useApi";
 
 export function useUserAchievements(userId) {
+    const { getUserAchievements } = useAchievementsApi()
     const [newUnlocked, setNewUnlocked] = useState(null);
-    const prevUnlockedNamesRef = useRef([]);
-    const initializedRef = useRef(false);
+
+    // Load previously seen achievements from localStorage
+    const prevUnlockedRef = useRef(
+        JSON.parse(localStorage.getItem(`prevUnlockedAchievements_${userId}`) || "[]")
+    );
 
     const query = useQuery({
         queryKey: ["userAchievements", userId],
         queryFn: () => getUserAchievements(userId),
         refetchInterval: 5000,
-        onSuccess: (res) => {
-            const data = res?.data?.data?.data; // <- fixed path
-            if (!data) return;
-
-            const achievements = data.achievements ?? [];
-
-            if (!initializedRef.current) {
-                prevUnlockedNamesRef.current = achievements
-                    .filter((a) => a.unlocked)
-                    .map((a) => a.name);
-                initializedRef.current = true;
-                return;
-            }
-
-            const newlyUnlocked = achievements.filter(
-                (a) =>
-                    a.unlocked && !prevUnlockedNamesRef.current.includes(a.name)
-            );
-
-            if (newlyUnlocked.length > 0) {
-                setNewUnlocked(newlyUnlocked[0]);
-            }
-
-            prevUnlockedNamesRef.current = achievements
-                .filter((a) => a.unlocked)
-                .map((a) => a.name);
-        },
+        staleTime: 4000, // treat cached data as fresh for 4s
+        select: (res) => res?.data?.data?.achievements ?? [],
     });
 
-    const payload = query.data?.data?.data ?? {}; // <- safe extract
+    // Detect newly unlocked achievements
+    useEffect(() => {
+        const achievements = query.data ?? [];
+        if (achievements.length === 0) return;
+
+        const unlockedNames = achievements.map((a) => a.name);
+
+        // Find achievements that are truly new
+        const newItems = unlockedNames.filter(
+            (name) => !prevUnlockedRef.current.includes(name)
+        );
+
+        if (newItems.length > 0) {
+            const latestUnlocked = achievements.find(
+                (a) => a.name === newItems[newItems.length - 1]
+            );
+
+            // Only update state if actually new
+            setNewUnlocked((prev) =>
+                prev?.name !== latestUnlocked.name ? latestUnlocked : prev
+            );
+        }
+
+        // Update ref & localStorage only if changed
+        if (JSON.stringify(prevUnlockedRef.current) !== JSON.stringify(unlockedNames)) {
+            prevUnlockedRef.current = unlockedNames;
+            localStorage.setItem(
+                `prevUnlockedAchievements_${userId}`,
+                JSON.stringify(unlockedNames)
+            );
+        }
+    }, [query.data, userId]);
+
+    // Auto-hide alert after 5 seconds
+    useEffect(() => {
+        if (!newUnlocked) return;
+        const timer = setTimeout(() => setNewUnlocked(null), 5000);
+        return () => clearTimeout(timer);
+    }, [newUnlocked]);
 
     return {
-        achievements: payload.achievements ?? [],
-        badge: payload.current_badge ?? null,
-        cashback: payload.cashback_balance ?? 0,
+        achievements: query.data ?? [],
+        badge: query.data?.find(a => a.current_badge)?.current_badge ?? null,
+        cashback: query.data?.find(a => a.cashback_balance)?.cashback_balance ?? 0,
         newUnlocked,
         isLoading: query.isLoading,
         isError: query.isError,

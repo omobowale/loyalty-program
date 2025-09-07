@@ -1,12 +1,15 @@
 import { useState } from "react"
+import { useMockAuth } from "../../context/MockAuthContext"
 
 export default function LoginPage({ onLogin }) {
     const [password, setPassword] = useState("")
+    const { user, setUser } = useMockAuth()
 
     const handleLogin = () => {
         if (password === "admin123") {
             // Mock authentication
             onLogin(true)
+            setUser({ id: 1, isAdmin: true })
         } else {
             alert("Wrong password")
         }

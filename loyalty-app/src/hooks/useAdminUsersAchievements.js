@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAllUsersAchievements } from "../services/admin";
+import { useAchievementsApi } from "./useApi";
 
 export function useAdminUsersAchievements(enabled = false) {
+    const { getAllUsersAchievements } = useAchievementsApi()
     const query = useQuery({
         queryKey: ["adminUsersAchievements"],
         queryFn: getAllUsersAchievements,

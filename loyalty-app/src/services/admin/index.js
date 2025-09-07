@@ -1,3 +1,2 @@
-import API from "../../utils/axiosInstance";
 
-export const getAllUsersAchievements = () => API.get('/admin/users/achievements');
+export const getAllUsersAchievements = (instance) => instance.get('/admin/users/achievements');
