@@ -1,12 +1,45 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+---
 
-Currently, two official plugins are available:
+### `/frontend/README.md`  
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```markdown
+# Loyalty Program Frontend (React)
 
-## Expanding the ESLint configuration
+## 📌 Overview
+This is the frontend for the Loyalty Program.  
+It includes:
+- **Customer Dashboard**: Achievements, badges, cashback balance
+- **Admin Panel**: Manage users and view their achievements
+- **Mock Authentication**: Simulated login for both admin and customer roles
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🏗 Design Choices
+- **React + React Router** for SPA navigation
+- **React Query** for data fetching and caching
+- **Context API (`MockAuthContext`)** for authentication
+- **Tailwind CSS** for styling
+- **Component-driven architecture**: AchievementsList, BadgeStatus, CashbackDisplay, etc.
+- **Unit & Integration Tests** with **Vitest + React Testing Library**
+
+## ⚙️ Setup
+- Please setup the backend first before doing this.
+1. Navigate to frontend:
+   ```bash
+   http://localhost:5173
+   ```
+
+=> Running the app
+
+Test credentials are just passwords
+
+For user/customer, we have
+First user has password : user1
+Second user has password : user2
+
+For admin, we have
+password: admin123
+
+Admin can also login as user with same password
+
+
+

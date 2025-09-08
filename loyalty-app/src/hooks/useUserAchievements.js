@@ -16,12 +16,12 @@ export function useUserAchievements(userId) {
         queryFn: () => getUserAchievements(userId),
         refetchInterval: 5000,
         staleTime: 4000, // treat cached data as fresh for 4s
-        select: (res) => res?.data?.data?.achievements ?? [],
+        select: (res) => res?.data?.data ?? [],
     });
 
     // Detect newly unlocked achievements
     useEffect(() => {
-        const achievements = query.data ?? [];
+        const achievements = query.data?.achievements ?? [];
         if (achievements.length === 0) return;
 
         const unlockedNames = achievements.map((a) => a.name);
@@ -59,10 +59,11 @@ export function useUserAchievements(userId) {
         return () => clearTimeout(timer);
     }, [newUnlocked]);
 
+
     return {
-        achievements: query.data ?? [],
-        badge: query.data?.find(a => a.current_badge)?.current_badge ?? null,
-        cashback: query.data?.find(a => a.cashback_balance)?.cashback_balance ?? 0,
+        achievements: query.data?.achievements ?? [],
+        badge: query.data?.current_badge ?? null,
+        cashback: query.data?.cashback_balance ?? 0,
         newUnlocked,
         isLoading: query.isLoading,
         isError: query.isError,

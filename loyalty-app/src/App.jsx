@@ -16,7 +16,6 @@ function App() {
           {/* Layout wrapper */}
           <Route element={<Layout />}>
             <Route path="/" element={<Customer />} />
-            <Route path="/login" element={<LoginPage />} />
             <Route path="/customer" element={<Customer />} />
             <Route path="/admin" element={<Admin />} />
           </Route>

@@ -32,7 +32,7 @@ export default function Layout() {
             </Link>
 
             {/* Admin link only visible if user is admin */}
-            {user?.isAdmin && (
+            {(!user || user?.isAdmin) && (
               <Link
                 to="/admin"
                 className={`px-3 py-1.5 rounded transition ${

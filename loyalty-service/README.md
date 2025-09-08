@@ -21,6 +21,12 @@ It is built with **Laravel** and provides support for:
    cd loyalty-program
    ```
 
+2. Copy content of .env.example to .env (for frontend and backend):
+   ```bash
+   cp ./loyalty-service/.env.example ./loyalty-service/.env
+   cp ./loyalty-app/.env.example ./loyalty-app/.env
+    ```
+
 2. Build and run:
    ```bash
    docker compose up --build
@@ -30,6 +36,16 @@ It is built with **Laravel** and provides support for:
     ```bash
     docker compose exec laravel bash
     ```
+
+4. Install dependencies (optional):
+    If for some reason, they dependencies were not installed during build run:
+    ```bash
+    docker compose run --rm laravel composer install
+    ```
+    - Ensure your processes are running in the container with `docker compose up` 
+    - before and after the installation
+
+
     
    - You will run your artisan commands right in this shell.
 
@@ -109,9 +125,12 @@ This command will:
 - Create a purchase transaction of **300** for the user with ID **1**
 - Add data to the `transactions` table
 
+You can run this command:
+- Anytime you want to trigger a purchase event.
+
 #### Step 2: Process the Purchase
 
-Execute the queue consumer to process the purchase and trigger rewards:
+Execute the queue consumer to process cashback from the purchase and trigger rewards:
 
 ```bash
 php artisan queue:consume-fake
